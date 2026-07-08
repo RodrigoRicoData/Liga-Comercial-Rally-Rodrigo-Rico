@@ -4,6 +4,8 @@
 
 > Elegí este proceso porque el seguimiento de apertura de nuevos clientes en una cervecería de Santa Cruz (Bolivia) se hace hoy de manera improvisada: cuando el jefe de ventas activa un "rally", anota en un Excel básico el nombre del vendedor y la cantidad de puntos que abrió, y al final premia al que más abrió. No hay validación, no hay seguimiento de recompra, no hay visibilidad durante la competencia y no queda ningún dato aprovechable.
 
+### 🔗 [Ver la maqueta en vivo](https://rodrigoricodata.github.io/Liga-Comercial-Rally-Rodrigo-Rico/liga_comercial_rally.html)
+
 ## ¿Qué transforma este proyecto?
 
 Convierte ese Excel improvisado en una **liga comercial gamificada con seguimiento automatizado**:
@@ -15,17 +17,18 @@ Convierte ese Excel improvisado en una **liga comercial gamificada con seguimien
 
 ## Estructura del repositorio
 
-| Carpeta / archivo | Contenido |
+| Archivo | Contenido |
 |---|---|
-| `maqueta/liga_comercial_rally.html` | Prototipo navegable de la app (Nivel 2): dashboard, registro de puntos, ranking, zonas, seguimiento, premios y reglas. Abrilo en cualquier navegador. |
-| `n8n/rally_resumen_semanal.json` | Workflow de n8n listo para importar: disparador semanal → Google Sheets → cálculo de ranking/alertas → Claude (IA) → email al jefe de ventas. |
-| `docs/diagramas/` | Diagramas del proceso **antes** y **después**. |
-| `prompts/prompts_del_proyecto.md` | Prompts diseñados: el que usa el workflow en producción y los usados durante el desarrollo (metodología). |
+| [`liga_comercial_rally.html`](https://rodrigoricodata.github.io/Liga-Comercial-Rally-Rodrigo-Rico/liga_comercial_rally.html) | Prototipo navegable de la app (Nivel 2): dashboard, registro de puntos, ranking, zonas, seguimiento, premios y reglas. Click en el nombre para verlo en vivo, o abrilo en cualquier navegador. |
+| [`rally_resumen_semanal.json`](rally_resumen_semanal.json) | Workflow de n8n listo para importar: disparador semanal → Google Sheets → cálculo de ranking/alertas → Claude (IA) → email al jefe de ventas. |
+| [`proceso_antes.png`](proceso_antes.png) / [`proceso_despues.png`](proceso_despues.png) | Diagramas del proceso **antes** y **después**. |
+| [`prompts_del_proyecto.md`](prompts_del_proyecto.md) | Prompts diseñados: el que usa el workflow en producción y los usados durante el desarrollo (metodología). |
+| [`Liga_Comercial_TP_Final_Rodrigo_Rico.pdf`](Liga_Comercial_TP_Final_Rodrigo_Rico.pdf) | Informe final del TP con el análisis completo (a–f) y evaluación AIBPS. |
 
 ## Cómo usarlo
 
-1. **Ver la maqueta:** abrir `maqueta/liga_comercial_rally.html` en el navegador (no requiere servidor).
-2. **Importar el workflow:** en n8n → *Workflows → Import from File* → seleccionar `n8n/rally_resumen_semanal.json`.
+1. **Ver la maqueta:** [abrila en vivo acá](https://rodrigoricodata.github.io/Liga-Comercial-Rally-Rodrigo-Rico/liga_comercial_rally.html), o descargá `liga_comercial_rally.html` y abrila en el navegador (no requiere servidor).
+2. **Importar el workflow:** en n8n → *Workflows → Import from File* → seleccionar `rally_resumen_semanal.json`.
 3. **Conectar credenciales:** cuenta de Google Sheets (hoja `puntos` con columnas `fecha, vendedor, zona, punto, canal, monto_bs, estado, validado, dias_sin_recompra`), API key de Anthropic y SMTP/Gmail para el envío.
 4. **Reemplazar los placeholders** marcados como `REEMPLAZAR_...` en el JSON (ID del Sheet, email del jefe de ventas, URL del dashboard).
 
