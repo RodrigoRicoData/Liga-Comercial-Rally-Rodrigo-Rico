@@ -1,0 +1,113 @@
+{
+  "name": "Rally Santa Cruz - Resumen semanal al Jefe de Ventas",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [1],
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "id": "a1000000-0000-0000-0000-000000000001",
+      "name": "Todos los lunes 07:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-460, 0],
+      "notes": "Disparador del proceso: cada lunes a las 07:00 se genera la 'jornada' semanal del rally."
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "REEMPLAZAR_ID_DE_TU_GOOGLE_SHEET"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "puntos"
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-0000-0000-000000000002",
+      "name": "Leer puntos abiertos (Google Sheets)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [-220, 0],
+      "notes": "Lee la hoja 'puntos'. Columnas esperadas: fecha, vendedor, zona, punto, canal, monto_bs, estado (primer_pedido/recompra), validado (si/no), dias_sin_recompra."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calcula ranking, indice general y alertas a partir de las filas del Sheet\nconst filas = $input.all().map(i => i.json);\n\nconst porVendedor = {};\nfor (const f of filas) {\n  if (String(f.validado).toLowerCase() !== 'si') continue; // control humano: solo cuentan puntos validados por el supervisor\n  const v = f.vendedor;\n  if (!porVendedor[v]) porVendedor[v] = { vendedor: v, zona: f.zona, aperturas: 0, recompras: 0, ventas: 0 };\n  if (Number(f.monto_bs) >= 300 && f.estado === 'primer_pedido') porVendedor[v].aperturas++;\n  if (f.estado === 'recompra') porVendedor[v].recompras++;\n  porVendedor[v].ventas += Number(f.monto_bs) || 0;\n}\n\nconst ranking = Object.values(porVendedor)\n  .map(v => ({ ...v, indice: Math.round(v.aperturas * 20 + v.recompras * 35 + v.ventas / 30) }))\n  .sort((a, b) => b.indice - a.indice);\n\n// Alertas: puntos validados con mas de 15 dias sin recompra\nconst alertas = filas\n  .filter(f => String(f.validado).toLowerCase() === 'si' && Number(f.dias_sin_recompra) > 15)\n  .map(f => `${f.punto} (${f.vendedor}, ${f.zona}): ${f.dias_sin_recompra} dias sin recompra`);\n\nconst totales = {\n  puntos_abiertos: ranking.reduce((s, v) => s + v.aperturas, 0),\n  ventas_bs: ranking.reduce((s, v) => s + v.ventas, 0),\n  meta_trimestral: 250\n};\n\nreturn [{ json: { ranking, alertas, totales, fecha: new Date().toISOString().slice(0, 10) } }];"
+      },
+      "id": "a1000000-0000-0000-0000-000000000003",
+      "name": "Calcular ranking y alertas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [20, 0],
+      "notes": "Regla de negocio del rally: indice = aperturas x 20 + recompras x 35 + ventas / 30. Solo suman puntos validados (>= Bs 300)."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "REEMPLAZAR_API_KEY_ANTHROPIC" },
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: 'claude-sonnet-4-6',\n  max_tokens: 800,\n  messages: [{\n    role: 'user',\n    content: 'Sos el analista comercial de una cerveceria en Santa Cruz, Bolivia. Con los datos del rally de apertura de nuevos clientes que te paso en JSON, redacta un resumen ejecutivo BREVE (maximo 200 palabras) en espanol para el jefe de ventas: 1) top 3 del ranking, 2) avance vs meta trimestral de 250 puntos, 3) las alertas de puntos sin recompra con una accion sugerida para cada una, 4) la zona mas rezagada. Tono directo y accionable. Solo sugeris: la decision final es del jefe de ventas. Datos: ' + JSON.stringify($json)\n  }]\n}) }}",
+        "options": {}
+      },
+      "id": "a1000000-0000-0000-0000-000000000004",
+      "name": "Claude redacta el resumen (IA)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [260, 0],
+      "notes": "Rol de la IA: convertir los numeros en un resumen ejecutivo con alertas y acciones SUGERIDAS. La IA propone, el jefe de ventas decide."
+    },
+    {
+      "parameters": {
+        "fromEmail": "rally@cerveceria-scz.com",
+        "toEmail": "REEMPLAZAR_EMAIL_JEFE_DE_VENTAS",
+        "subject": "=Rally Santa Cruz · Resumen semanal · {{ $('Calcular ranking y alertas').item.json.fecha }}",
+        "emailFormat": "html",
+        "html": "=<h2>🏆 Rally Santa Cruz · Resumen semanal</h2>\n<p>{{ $json.content[0].text.replace(/\\n/g, '<br>') }}</p>\n<hr>\n<p><b>📊 Dashboard completo del rally:</b> <a href=\"https://REEMPLAZAR-URL-DEL-DASHBOARD\">Ver tabla de posiciones y seguimiento de puntos</a></p>\n<p style=\"color:#888;font-size:12px\">Resumen generado automáticamente con n8n + Claude. Las acciones son sugerencias: la decisión es del equipo comercial.</p>",
+        "options": {}
+      },
+      "id": "a1000000-0000-0000-0000-000000000005",
+      "name": "Enviar email al Jefe de Ventas",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [500, 0],
+      "notes": "Entrega el resumen + enlace al dashboard (la maqueta HTML publicada en Netlify/Vercel o el propio Sheet)."
+    }
+  ],
+  "connections": {
+    "Todos los lunes 07:00": {
+      "main": [[{ "node": "Leer puntos abiertos (Google Sheets)", "type": "main", "index": 0 }]]
+    },
+    "Leer puntos abiertos (Google Sheets)": {
+      "main": [[{ "node": "Calcular ranking y alertas", "type": "main", "index": 0 }]]
+    },
+    "Calcular ranking y alertas": {
+      "main": [[{ "node": "Claude redacta el resumen (IA)", "type": "main", "index": 0 }]]
+    },
+    "Claude redacta el resumen (IA)": {
+      "main": [[{ "node": "Enviar email al Jefe de Ventas", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": { "instanceId": "trabajo-final-fce-uba" }
+}
